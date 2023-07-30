@@ -135,7 +135,7 @@ def grab_subscriptions():
     return result
 
 
-def generate_clash_config(proxies: list[ServerInfo], path: str, listen: int):
+def generate_clash_config(proxies: list, path: str, listen: int):
     clash_config = {
         "mixed-port": listen,
         "mode": "rule",
