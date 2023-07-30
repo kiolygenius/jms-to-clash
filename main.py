@@ -180,21 +180,20 @@ def generate_clash_config(proxies: list[ServerInfo], path: str, listen: int):
         def proxy_sort_cmp(s: str) -> int:
             try:
                 sid = int(s.split('@')[1].split('.')[0].split('s')[1])
-                match sid:
-                    case 5:
-                        return 0
-                    case 3:
-                        return 1
-                    case 2:
-                        return 2
-                    case 1:
-                        return 3
-                    case 4:
-                        return 4
-                    case 801:
-                        return 5
-                    case _:
-                        return 6
+                if sid == 5:
+                    return 0
+                elif sid == 3:
+                    return 1
+                elif sid == 2:
+                    return 2
+                elif sid == 1:
+                    return 3
+                elif sid == 4:
+                    return 4
+                elif sid == 801:
+                    return 5
+                else:
+                    return 6
             except Exception:
                 return 99
 
