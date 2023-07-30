@@ -135,8 +135,9 @@ def grab_subscriptions():
     return result
 
 
-def generate_clash_config(proxies: list, path: str, listen: int):
+def generate_clash_config(proxies: list, path: str, listen: int, allow_len: bool):
     clash_config = {
+        "allow-lan": allow_len,
         "mixed-port": listen,
         "mode": "rule",
         "external-controller": "127.0.0.1:9090",
@@ -213,16 +214,19 @@ def generate_clash_config(proxies: list, path: str, listen: int):
 def main():
     path = None
     listen = 1082
+    allow_lan = False
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "f:p:")
+        opts, args = getopt.getopt(sys.argv[1:], "nf:p:")
         for opt, arg in opts:
             if opt == '-f':
                 path = arg
             elif opt == '-p':
                 listen = int(arg)
+            elif opt == '-n':
+                allow_lan = True
 
         server_confs = grab_subscriptions()
-        generate_clash_config(server_confs, path, listen)
+        generate_clash_config(server_confs, path, listen, allow_lan)
     except getopt.GetoptError:
         print("使用参数 -f /path/to/clash_config.yaml -p 1082", file=sys.stderr)
     except InternalError as e:
