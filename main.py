@@ -12,7 +12,7 @@ SUBSCRIPTION_URL = \
 
 SS = "shadowsocks"
 VMESS = "vmess"
-
+SERVERS_PRIORITY = [3, 5, 1, 2, 4, 801]
 
 class InternalError(Exception):
     def __init__(self, msg):
@@ -181,21 +181,10 @@ def generate_clash_config(proxies: list, path: str, listen: int, allow_len: bool
         def proxy_sort_cmp(s: str) -> int:
             try:
                 sid = int(s.split('@')[1].split('.')[0].split('s')[1])
-                if sid == 5:
-                    return 0
-                elif sid == 3:
-                    return 1
-                elif sid == 2:
-                    return 2
-                elif sid == 1:
-                    return 3
-                elif sid == 4:
-                    return 4
-                elif sid == 801:
-                    return 5
-                else:
-                    return 6
-            except Exception:
+                return SERVERS_PRIORITY.index(sid)
+            except ValueError:
+                return 99
+            except KeyError:
                 return 99
 
         clash_config['proxy-groups'][0]['proxies'].sort(reverse=False, key=proxy_sort_cmp)
