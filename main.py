@@ -83,15 +83,15 @@ def decode_vmess(ss_server_str: str):
         raise InternalError("Can not decode json '" + ss_server_str + "'.")
 
     info = ServerInfo(VMESS)
-    info.tag = vmess_conf['ps'] or ''
-    info.host = vmess_conf['add'] or ''
-    info.port = int(vmess_conf['port'] or '0')
-    info.tls = vmess_conf['tls'] or info.tls
-    info.alter_id = int(vmess_conf['aid'] or 0)
-    info.key = vmess_conf['id'] or ''
-    info.sni = vmess_conf['sni'] or ''
+    info.tag = vmess_conf.get('ps', '')
+    info.host = vmess_conf.get('add', '')
+    info.port = int(vmess_conf.get('port', '0'))
+    info.tls = vmess_conf.get('tls', info.tls)
+    info.alter_id = int(vmess_conf.get('aid', '0'))
+    info.key = vmess_conf.get('id', '')
+    info.sni = vmess_conf.get('sni', '')
     info.camouflage = vmess_conf['type'] or 'none'
-    info.net = vmess_conf['net'] or info.net
+    info.net = vmess_conf.get('net', info.net)
     info.algorithm = 'auto'
     return info
 
