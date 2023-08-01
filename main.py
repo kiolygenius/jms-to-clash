@@ -8,11 +8,12 @@ import json
 import yaml
 
 SUBSCRIPTION_URL = \
-    'https://jmssub.net/members/getsub.php?service=467966&id=7b7aaf67-0c25-4b23-8593-236a01028268&usedomains=1'
+    'https://jmssub.net/members/getsub.php?service={0}&id={1}&usedomains=1'
 
 SS = "shadowsocks"
 VMESS = "vmess"
 SERVERS_PRIORITY = [3, 5, 1, 2, 4, 801]
+
 
 class InternalError(Exception):
     def __init__(self, msg):
@@ -96,10 +97,10 @@ def decode_vmess(ss_server_str: str):
     return info
 
 
-def grab_subscriptions():
+def grab_subscriptions(service_id: str, uuid: str):
     result = list()
     try:
-        resp = requests.get(SUBSCRIPTION_URL)
+        resp = requests.get(SUBSCRIPTION_URL.format(service_id, uuid))
     except Exception:
         raise InternalError("requests.get raises exceptions.")
     if not resp.ok:
@@ -204,8 +205,10 @@ def main():
     path = None
     listen = 1082
     allow_lan = False
+    service = ''
+    uuid = ''
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "nf:p:")
+        opts, args = getopt.getopt(sys.argv[1:], "nf:p:s:u:")
         for opt, arg in opts:
             if opt == '-f':
                 path = arg
@@ -213,8 +216,12 @@ def main():
                 listen = int(arg)
             elif opt == '-n':
                 allow_lan = True
+            elif opt == '-s':
+                service = arg
+            elif opt == '-u':
+                uuid = arg
 
-        server_confs = grab_subscriptions()
+        server_confs = grab_subscriptions(service, uuid)
         generate_clash_config(server_confs, path, listen, allow_lan)
     except getopt.GetoptError:
         print("使用参数 -f /path/to/clash_config.yaml -p 1082", file=sys.stderr)
