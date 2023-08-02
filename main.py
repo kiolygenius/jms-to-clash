@@ -97,7 +97,7 @@ def decode_vmess(ss_server_str: str):
     return info
 
 
-def grab_subscriptions(service_id: str, uuid: str):
+def grab_subscriptions(service_id: str, uuid: str, fallback: None or str):
     result = list()
     try:
         resp = requests.get(SUBSCRIPTION_URL.format(service_id, uuid))
@@ -113,6 +113,9 @@ def grab_subscriptions(service_id: str, uuid: str):
         raise InternalError("subscription b64 decoded result can not decode to string by utf-8")
 
     server_confs = server_confs_str.split('\n')
+
+    if fallback is not None:
+        server_confs.append(fallback)
 
     for server_conf in server_confs:
         p_s = server_conf.split('://')
@@ -148,7 +151,7 @@ def generate_clash_config(proxies: list, path: str, listen: int, allow_len: bool
                 "name": "fastest",
                 "type": "fallback",
                 "proxies": [],  # wait to fill
-                "url": "http://www.gstatic.com/generate_204",
+                "url": "https://cp.cloudflare.com/",
                 "interval": 300
             }
         ],
@@ -187,6 +190,8 @@ def generate_clash_config(proxies: list, path: str, listen: int, allow_len: bool
                 return 99
             except KeyError:
                 return 99
+            except Exception:
+                return 99
 
         clash_config['proxy-groups'][0]['proxies'].sort(reverse=False, key=proxy_sort_cmp)
 
@@ -207,8 +212,9 @@ def main():
     allow_lan = False
     service = ''
     uuid = ''
+    fallback = None
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "nf:p:s:u:")
+        opts, args = getopt.getopt(sys.argv[1:], "nf:p:s:u:b:")
         for opt, arg in opts:
             if opt == '-f':
                 path = arg
@@ -220,11 +226,13 @@ def main():
                 service = arg
             elif opt == '-u':
                 uuid = arg
+            elif opt == '-b':  # fallback
+                fallback = arg
 
-        server_confs = grab_subscriptions(service, uuid)
+        server_confs = grab_subscriptions(service, uuid, fallback)
         generate_clash_config(server_confs, path, listen, allow_lan)
     except getopt.GetoptError:
-        print("使用参数 -f /path/to/clash_config.yaml -p 1082", file=sys.stderr)
+        print("使用参数 -f /path/to/clash_config.yaml -p 1082 -s service_id -u uuid", file=sys.stderr)
     except InternalError as e:
         print(e.message, file=sys.stderr)
 
