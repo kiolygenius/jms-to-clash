@@ -42,6 +42,7 @@ def base64decode(encoded: str) -> bytes:
         return base64.decodebytes(encoded.encode("utf-8"))
     except Exception as e:
         print(e)
+        return encoded.encode("utf-8")
 
 
 def decode_shadowsocks(ss_server_str: str):
