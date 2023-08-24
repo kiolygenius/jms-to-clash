@@ -139,10 +139,11 @@ def grab_subscriptions(service_id: str, uuid: str, fallback: None or str):
     return result
 
 
-def generate_clash_config(proxies: list, path: str, listen: int, allow_len: bool):
+def generate_clash_config(proxies: list, path: str, listen: int, allow_len: bool, support_meta: bool):
     clash_config = {
         "allow-lan": allow_len,
-        "mixed-port": listen,
+        "port": listen,
+        "socks-port": listen+1,
         "mode": "rule",
         "external-controller": "127.0.0.1:9090",
         "proxies": [],  # wait to fill
@@ -159,6 +160,15 @@ def generate_clash_config(proxies: list, path: str, listen: int, allow_len: bool
             "MATCH,fastest"
         ]
     }
+
+    if support_meta:
+        clash_config['rules'] = [
+            "GEOSITE,cn,DIRECT",
+            "GEOIP,CN,DIRECT",
+            "GEOIP,LAN,DIRECT,no-resolve"
+                                ] + clash_config['rules'][:1]
+        if allow_len:
+            clash_config['bind-address'] = "*"
 
     for proxy in proxies:
         clash_proxy = {
@@ -213,8 +223,9 @@ def main():
     service = ''
     uuid = ''
     fallback = None
+    support_meta = False
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "nf:p:s:u:b:")
+        opts, args = getopt.getopt(sys.argv[1:], "mnf:p:s:u:b:")
         for opt, arg in opts:
             if opt == '-f':
                 path = arg
@@ -228,9 +239,11 @@ def main():
                 uuid = arg
             elif opt == '-b':  # fallback
                 fallback = arg
+            elif opt == '-m':
+                support_meta = True
 
         server_confs = grab_subscriptions(service, uuid, fallback)
-        generate_clash_config(server_confs, path, listen, allow_lan)
+        generate_clash_config(server_confs, path, listen, allow_lan, support_meta)
     except getopt.GetoptError:
         print("使用参数 -f /path/to/clash_config.yaml -p 1082 -s service_id -u uuid", file=sys.stderr)
     except InternalError as e:
