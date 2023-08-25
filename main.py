@@ -145,6 +145,7 @@ def generate_clash_config(proxies: list, path: str, listen: int, allow_len: bool
         "port": listen,
         "socks-port": listen+1,
         "mode": "rule",
+        "log-level": "warning",
         "external-controller": "127.0.0.1:9090",
         "proxies": [],  # wait to fill
         "proxy-groups": [
