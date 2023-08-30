@@ -163,7 +163,15 @@ def generate_clash_config(proxies: list, path: str, listen: int, allow_len: bool
     }
 
     if support_meta:
+        clash_config['rule-providers'] = {
+            "custom-direct": {
+                "type": "file",
+                "behavior": "classical",
+                "path": "./custom-direct.yaml"
+            }
+        }
         clash_config['rules'] = [
+            "RULE-SET,custom-direct,DIRECT",
             "GEOSITE,cn,DIRECT",
             "GEOIP,CN,DIRECT",
             "GEOIP,LAN,DIRECT,no-resolve"
