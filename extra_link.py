@@ -16,15 +16,13 @@ def link_to_servers(link: str):
 
 
 def generate_proxy_providers(server_confs, path: str):
-    configs = {
-        "proxies": []
-    }
+    configs = {"proxies": []}
 
     for server_conf in server_confs:
-        configs['proxies'].append(server_conf_2_dict(server_conf))
+        configs["proxies"].append(server_conf_2_dict(server_conf))
 
     try:
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             yaml.dump(configs, f)
     except Exception as e:
         print(e, file=sys.stderr)
@@ -37,7 +35,7 @@ def modify_main_config(main_conf_path: str, provider_conf_path: str, name: str):
     _, provider_file_name = os.path.split(provider_conf_path)
     clash_config: dict or None = None
     try:
-        with open(main_conf_path, 'r') as f:
+        with open(main_conf_path, "r") as f:
             clash_config = yaml.safe_load(f)
     except Exception as e:
         print(e, file=sys.stderr)
@@ -54,30 +52,32 @@ def modify_main_config(main_conf_path: str, provider_conf_path: str, name: str):
         "health-check": {
             "enable": True,
             "url": "https://cp.cloudflare.com/generate_204",
-            "interval": 300
-        }
+            "interval": 300,
+        },
     }
 
     if "proxy-providers" in clash_config.keys():
         clash_config["proxy-providers"][provider_name] = provider
     else:
-        clash_config["proxy-providers"] = {provider_name : provider}
+        clash_config["proxy-providers"] = {provider_name: provider}
 
-    clash_config['proxy-groups'].append({
-        "name": name,
-        "type": "url-test",
-        "use": [provider_name],
-        "url": "https://cp.cloudflare.com/generate_204",
-        "interval": 300
-    })
+    clash_config["proxy-groups"].append(
+        {
+            "name": name,
+            "type": "url-test",
+            "use": [provider_name],
+            "url": "https://cp.cloudflare.com/generate_204",
+            "interval": 300,
+        }
+    )
 
-    for group in clash_config['proxy-groups']:
-        if group['name'] == 'manual':
-            group['proxies'].append(name)
+    for group in clash_config["proxy-groups"]:
+        if group["name"] == "manual":
+            group["proxies"].append(name)
             break
 
     try:
-        with open(main_conf_path, 'w') as f:
+        with open(main_conf_path, "w") as f:
             yaml.dump(clash_config, f)
     except Exception as e:
         print(e, file=sys.stderr)
@@ -93,23 +93,26 @@ def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], "l:f:m:n:")
         for opt, arg in opts:
-            if opt == '-f':
+            if opt == "-f":
                 path = arg
-            elif opt == '-l':
+            elif opt == "-l":
                 link = arg
-            elif opt == '-m':
+            elif opt == "-m":
                 main_conf_path = arg
-            elif opt == '-n':
+            elif opt == "-n":
                 name = arg
 
         server_confs = link_to_servers(link)
         generate_proxy_providers(server_confs, path)
         modify_main_config(main_conf_path, path, name)
     except getopt.GetoptError:
-        print("使用参数 -f /path/to/proxy-providers.yaml -l https://location.subscription/url", file=sys.stderr)
+        print(
+            "使用参数 -f /path/to/proxy-providers.yaml -l https://location.subscription/url",
+            file=sys.stderr,
+        )
     except InternalError as e:
         print(e.message, file=sys.stderr)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
