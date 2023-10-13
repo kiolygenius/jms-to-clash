@@ -12,7 +12,7 @@ def link_to_servers(link: str):
     if not link:
         return None
 
-    return subscription_to_servers(link)
+    return subscription_to_servers(link, None)
 
 
 def generate_proxy_providers(server_confs, path: str):

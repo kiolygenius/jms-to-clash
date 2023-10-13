@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import os.path
 import sys
 import getopt
 import yaml
@@ -13,12 +14,18 @@ SUBSCRIPTION_URL = (
 SERVERS_PRIORITY = [3, 5, 1, 2, 4, 801]
 
 
-def grab_subscriptions(service_id: str, uuid: str, fallback: None or str):
+def grab_subscriptions(service_id: str, uuid: str, fallback: None or str, path: str):
     url = SUBSCRIPTION_URL.format(service_id, uuid)
+    cache_file = os.path.join(os.path.dirname(path), "cache.txt")
     try:
-        result = subscription_to_servers(url)
+        result = subscription_to_servers(url, cache_file)
     except InternalError as e:
-        result = list()
+        print("无法读取订阅链接，尝试使用上次缓存……", file=sys.stderr)
+        try:
+            result = cache_to_servers(cache_file)
+        except InternalError as e:
+            print(e.message, file=sys.stderr)
+            result = list()
 
     if fallback:
         fb_server = uri_to_server(fallback)
@@ -124,7 +131,7 @@ def main():
             elif opt == "-m":
                 support_meta = True
 
-        server_confs = grab_subscriptions(service, uuid, fallback)
+        server_confs = grab_subscriptions(service, uuid, fallback, path)
         generate_clash_config(server_confs, path, listen, allow_lan, support_meta)
     except getopt.GetoptError:
         print(

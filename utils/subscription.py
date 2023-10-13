@@ -93,7 +93,7 @@ def decode_vmess(ss_server_str: str):
     return info
 
 
-def subscription_to_servers(url: str):
+def subscription_to_servers(url: str, cache_file: str or None):
     result = list()
     try:
         resp = requests.get(url)
@@ -118,6 +118,40 @@ def subscription_to_servers(url: str):
         if info is not None:
             result.append(info)
 
+    if cache_file is not None:
+        try:
+            with open(cache_file, mode="w") as f:
+                f.write(resp.text)
+        except OSError:
+            pass
+
+    return result
+
+
+def cache_to_servers(file: str):
+    result = list()
+    try:
+        with open(file, mode="r") as f:
+            text = f.read()
+            server_confs_bs = base64decode(text)
+            try:
+                server_confs_str = server_confs_bs.decode("utf-8", "strict")
+            except UnicodeDecodeError:
+                raise InternalError(
+                    "subscription b64 decoded result can not decode to string by utf-8"
+                )
+
+            server_confs = server_confs_str.split("\n")
+
+            for server_conf in server_confs:
+                info = uri_to_server(server_conf)
+
+                if info is not None:
+                    result.append(info)
+
+            return result
+    except OSError as e:
+        raise InternalError("can not open cache file " + file + ", " + str(e))
     return result
 
 
