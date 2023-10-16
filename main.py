@@ -7,7 +7,7 @@ import yaml
 from utils.subscription import *
 
 SUBSCRIPTION_URL = (
-    "https://jmssub.net/members/getsub.php?service={0}&id={1}&usedomains=1"
+    "https://jjsubmarines.com/members/getsub.php?service={0}&id={1}&usedomains=1"
 )
 
 
