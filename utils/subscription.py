@@ -96,7 +96,7 @@ def decode_vmess(ss_server_str: str):
 def subscription_to_servers(url: str, cache_file: str or None):
     result = list()
     try:
-        resp = requests.get(url, proxies={"http_proxy": "", "https_proxy": ""})
+        resp = requests.get(url, proxies={"http": "", "https": ""})
     except Exception as e:
         raise InternalError("requests.get raises exceptions. " + str(e))
     if not resp.ok:
