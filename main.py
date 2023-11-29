@@ -11,7 +11,7 @@ SUBSCRIPTION_URL = (
 )
 
 
-SERVERS_PRIORITY = [3, 5, 1, 2, 4, 801]
+SERVERS_PRIORITY = [5, 3, 1, 2, 4, 801]
 
 
 def grab_subscriptions(service_id: str, uuid: str, fallback: None or str, path: str):
