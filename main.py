@@ -58,6 +58,7 @@ def generate_clash_config(
     }
 
     if support_meta:
+        clash_config["tun"] = {"enable": False}
         clash_config["rule-providers"] = {
             "custom-direct": {
                 "type": "file",
