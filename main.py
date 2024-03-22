@@ -52,7 +52,7 @@ def generate_clash_config(
                 "url": "https://cp.cloudflare.com/",
                 "interval": 300,
             },
-            {"name": "manual", "type": "select", "proxies": ["jms-available"]},
+            {"name": "manual", "type": "select", "proxies": ["jms-available", "static"]},
         ],
         "rules": ["MATCH,manual"],
     }
@@ -80,6 +80,27 @@ def generate_clash_config(
         ] + clash_config["rules"][:1]
         if allow_len:
             clash_config["bind-address"] = "*"
+
+        clash_config["proxy-providers"] = {
+            "static": {
+                "type": "file",
+                "path": "./static.yaml",
+                "health-check": {
+                    "enable": True,
+                    "url": "https://cp.cloudflare.com/generate_204",
+                    "interval": 300,
+                },
+            }
+        }
+        clash_config["proxy-groups"].append(
+            {
+                "name": "static",
+                "type": "select",
+                "use": ["static"],
+                "url": "https://cp.cloudflare.com/generate_204",
+                "interval": 300,
+            }
+        )
 
     for proxy in proxies:
         clash_proxy = server_conf_2_dict(proxy)
