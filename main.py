@@ -43,7 +43,16 @@ def generate_clash_config(
         "mode": "rule",
         "log-level": "warning",
         "external-controller": "127.0.0.1:9090",
-        "proxies": [],  # wait to fill
+        "proxies": [
+            {
+                "name": "direct-v6",
+                "type": "direct",
+                "udp": True,
+                "tfo": True,
+                "mptcp": True,
+                "ip-version": "ipv6-prefer"
+            }
+        ],  # wait to fill
         "proxy-groups": [
             {
                 "name": "jms-available",
@@ -72,10 +81,10 @@ def generate_clash_config(
             },
         }
         clash_config["rules"] = [
-            "RULE-SET,custom-direct,DIRECT",
+            "RULE-SET,custom-direct,direct-v6",
             "RULE-SET,custom-proxy,manual",
-            "GEOSITE,cn,DIRECT",
-            "GEOIP,CN,DIRECT",
+            "GEOSITE,cn,direct-v6",
+            "GEOIP,CN,direct-v6",
             "GEOIP,LAN,DIRECT,no-resolve",
         ] + clash_config["rules"][:1]
         if allow_len:
