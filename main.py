@@ -50,7 +50,7 @@ def generate_clash_config(
                 "udp": True,
                 "tfo": True,
                 "mptcp": True,
-                "ip-version": "ipv6-prefer"
+                "ip-version": "dual"
             }
         ],  # wait to fill
         "proxy-groups": [
