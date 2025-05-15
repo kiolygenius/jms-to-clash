@@ -37,6 +37,17 @@ def base64decode(encoded: str) -> bytes:
     except Exception as e:
         print(e)
         return encoded.encode("utf-8")
+    
+
+def base64decode_or_original(s: str) -> str:
+    if s.find('@') != -1 and s.find(':') != -1:
+        return s
+    
+    try:
+        s = base64decode(s).decode("utf-8")
+        return s
+    except UnicodeDecodeError:
+        return s
 
 
 def decode_shadowsocks(ss_server_str: str):
@@ -46,10 +57,7 @@ def decode_shadowsocks(ss_server_str: str):
         info.tag = s_tag[1]
     if len(s_tag) > 0:
         server = s_tag[0]
-        try:
-            server = base64decode(server).decode("utf-8")
-        except UnicodeDecodeError:
-            raise InternalError("shadowsocks server can't decode to utf-8")
+        server = base64decode_or_original(server)
 
         auth_server = server.split("@")
         if len(auth_server) > 1:
@@ -58,7 +66,7 @@ def decode_shadowsocks(ss_server_str: str):
         else:
             return None
 
-        [info.algorithm, info.key] = method_key.split(":")
+        [info.algorithm, info.key] = base64decode_or_original(method_key).split(":")
         [info.host, port] = host_port.split(":")
         info.port = int(port)
         return info
