@@ -3,6 +3,7 @@ import sys
 import json
 import base64
 import requests
+from urllib.parse import unquote
 
 SS = "shadowsocks"
 VMESS = "vmess"
@@ -48,13 +49,21 @@ def base64decode_or_original(s: str) -> str:
         return s
     except UnicodeDecodeError:
         return s
+    
+
+def urldecode_or_original(s: str) -> str:
+    try:
+        decoded_s = unquote(s)
+        return decoded_s
+    except Exception:
+        return s
 
 
-def decode_shadowsocks(ss_server_str: str):
+def decode_shadowsocks(ss_server_str: str) -> ServerInfo | None:
     info = ServerInfo(SS)
     s_tag = ss_server_str.split("#")
     if len(s_tag) > 1:
-        info.tag = s_tag[1]
+        info.tag = urldecode_or_original(s_tag[1].strip())
     if len(s_tag) > 0:
         server = s_tag[0]
         server = base64decode_or_original(server)
@@ -74,7 +83,7 @@ def decode_shadowsocks(ss_server_str: str):
         return None
 
 
-def decode_vmess(ss_server_str: str):
+def decode_vmess(ss_server_str: str) -> ServerInfo | None:
     try:
         ss_server_str = base64decode(ss_server_str).decode("utf-8")
     except UnicodeDecodeError:
@@ -101,8 +110,8 @@ def decode_vmess(ss_server_str: str):
     return info
 
 
-def subscription_to_servers(url: str, cache_file: str or None):
-    result = list()
+def subscription_to_servers(url: str, cache_file: str | None) -> list[ServerInfo]:
+    result: list[ServerInfo] = list()
     try:
         resp = requests.get(url, headers= {"User-Agent": "curl/8.5.0"} , proxies={"http": "", "https": ""})
     except Exception as e:
@@ -163,7 +172,7 @@ def cache_to_servers(file: str):
     return result
 
 
-def uri_to_server(uri: str):
+def uri_to_server(uri: str) -> ServerInfo | None:
     p_s = uri.split("://")
     if len(p_s) < 2:
         return None

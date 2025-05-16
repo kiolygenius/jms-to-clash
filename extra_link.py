@@ -8,14 +8,14 @@ import yaml
 from utils.subscription import *
 
 
-def link_to_servers(link: str):
+def link_to_servers(link: str) -> list[ServerInfo] | None:
     if not link:
         return None
 
     return subscription_to_servers(link, None)
 
 
-def generate_proxy_providers(server_confs, path: str):
+def generate_proxy_providers(server_confs: list[ServerInfo], path: str):
     configs = {"proxies": []}
 
     for server_conf in server_confs:
@@ -33,7 +33,7 @@ def modify_main_config(main_conf_path: str, provider_conf_path: str, name: str):
     if not main_conf_path:
         raise InternalError("no main config path passed.")
     _, provider_file_name = os.path.split(provider_conf_path)
-    clash_config: dict or None = None
+    clash_config: dict|None = None
     try:
         with open(main_conf_path, "r") as f:
             clash_config = yaml.safe_load(f)
@@ -89,7 +89,7 @@ def main():
     link = None
     main_conf_path = None
     name = None
-
+    server_confs = None
     try:
         opts, args = getopt.getopt(sys.argv[1:], "l:f:m:n:")
         for opt, arg in opts:
@@ -101,13 +101,16 @@ def main():
                 main_conf_path = arg
             elif opt == "-n":
                 name = arg
-
-        server_confs = link_to_servers(link)
-        generate_proxy_providers(server_confs, path)
-        modify_main_config(main_conf_path, path, name)
+        if link:
+            server_confs = link_to_servers(link)
+        if server_confs is not None and path is not None:
+            generate_proxy_providers(server_confs, path)
+        
+        if main_conf_path is not None and path is not None and name is not None:
+            modify_main_config(main_conf_path, path, name)
     except getopt.GetoptError:
         print(
-            "使用参数 -f /path/to/proxy-providers.yaml -l https://location.subscription/url",
+            "使用参数 -f /path/to/proxy-providers.yaml -m /path/to/config.yaml -n provider-name -l https://location.subscription/url",
             file=sys.stderr,
         )
     except InternalError as e:
@@ -116,3 +119,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # -f /home/xiaofeng/.config/clash-meta/ash.yaml -n Ash -m /home/xiaofeng/.config/clash-meta/config.yaml -l $URL
