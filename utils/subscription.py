@@ -75,8 +75,8 @@ def decode_shadowsocks(ss_server_str: str) -> ServerInfo | None:
         else:
             return None
 
-        [info.algorithm, info.key] = base64decode_or_original(method_key).split(":")
-        [info.host, port] = host_port.split(":")
+        [info.algorithm, info.key] = base64decode_or_original(method_key).split(":", maxsplit=1)
+        [info.host, port] = host_port.split(":", maxsplit=1)
         info.port = int(port)
         return info
     else:
