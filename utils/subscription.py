@@ -61,26 +61,31 @@ def urldecode_or_original(s: str) -> str:
 
 def decode_shadowsocks(ss_server_str: str) -> ServerInfo | None:
     info = ServerInfo(SS)
-    s_tag = ss_server_str.split("#")
-    if len(s_tag) > 1:
-        info.tag = urldecode_or_original(s_tag[1].strip())
-    if len(s_tag) > 0:
-        server = s_tag[0]
-        server = base64decode_or_original(server)
+    try:
+        s_tag = ss_server_str.split("#")
+        if len(s_tag) > 1:
+            info.tag = urldecode_or_original(s_tag[1].strip())
+        if len(s_tag) > 0:
+            server = s_tag[0]
+            server = base64decode_or_original(server)
 
-        auth_server = server.split("@")
-        if len(auth_server) > 1:
-            host_port = auth_server[1]
-            method_key = auth_server[0]
+            auth_server = server.split("@")
+            if len(auth_server) > 1:
+                host_port = auth_server[1]
+                method_key = auth_server[0]
+            else:
+                return None
+
+            [info.algorithm, info.key] = base64decode_or_original(method_key).split(":", maxsplit=1)
+            [info.host, port] = host_port.split(":", maxsplit=1)
+            info.port = int(port)
+            return info
         else:
             return None
-
-        [info.algorithm, info.key] = base64decode_or_original(method_key).split(":", maxsplit=1)
-        [info.host, port] = host_port.split(":", maxsplit=1)
-        info.port = int(port)
-        return info
-    else:
+    except Exception as e:
+        print(e, file=sys.stderr)
         return None
+
 
 
 def decode_vmess(ss_server_str: str) -> ServerInfo | None:

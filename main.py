@@ -14,7 +14,7 @@ SUBSCRIPTION_URL = (
 SERVERS_PRIORITY = [3, 5, 1, 2, 4, 801]
 
 
-def grab_subscriptions(service_id: str, uuid: str, fallback: None or str, path: str):
+def grab_subscriptions(service_id: str, uuid: str, fallback: None | str, path: str):
     url = SUBSCRIPTION_URL.format(service_id, uuid)
     cache_file = os.path.join(os.path.dirname(path), "cache.txt")
     try:
@@ -29,7 +29,8 @@ def grab_subscriptions(service_id: str, uuid: str, fallback: None or str, path: 
 
     if fallback:
         fb_server = uri_to_server(fallback)
-        result.insert(0, fb_server)
+        if fb_server is not None:
+            result.insert(0, fb_server)
     return result
 
 
