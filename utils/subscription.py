@@ -7,6 +7,7 @@ from urllib.parse import unquote
 
 SS = "shadowsocks"
 VMESS = "vmess"
+VLESS = "vless"
 
 
 class InternalError(Exception):
@@ -20,7 +21,7 @@ class ServerInfo:
         self.host = ""
         self.port = 0
         self.key = ""
-        self.algorithm = ""
+        self.algorithm: str | None = None
         self.alter_id = 0
         self.net = "tcp"
         self.camouflage = "none"
@@ -29,6 +30,8 @@ class ServerInfo:
         self.addition = ""
         self.tag = ""
         self.path = None
+        self.flow: str | None = None
+        self.client_fingerprint: str | None = None
 
 
 def base64decode(encoded: str) -> bytes:
@@ -115,6 +118,33 @@ def decode_vmess(ss_server_str: str) -> ServerInfo | None:
     return info
 
 
+def decode_vless(server_str: str) -> ServerInfo | None:
+    info = ServerInfo(VLESS)
+    try:
+        [server_info, info.tag] = server_str.split("#", maxsplit=1)
+        info.tag = urldecode_or_original(info.tag.strip())
+        [base, extra] = server_info.split("?", maxsplit=1)
+        [info.key, endpoint] = base.split("@", maxsplit=1)
+        [info.host, port] = endpoint.split(":", maxsplit=1)
+        info.port = int(port)
+        params = extra.split("&")
+        for param in params:
+            if param.startswith("type="):
+                info.net = param.split("=", maxsplit=1)[1]
+            elif param.startswith("flow="):
+                info.flow = param.split("=", maxsplit=1)[1]
+            elif param.startswith("sni="):
+                info.sni = param.split("=", maxsplit=1)[1]
+            elif param == "security=tls":
+                info.tls = "tls"
+            elif param.startswith("fp="):
+                info.client_fingerprint = param.split("=", maxsplit=1)[1]
+    except Exception as e:
+        print(e, file=sys.stderr)
+        return None
+    return info
+
+
 def subscription_to_servers(url: str, cache_file: str | None) -> list[ServerInfo]:
     result: list[ServerInfo] = list()
     try:
@@ -194,20 +224,27 @@ def uri_to_server(uri: str) -> ServerInfo | None:
             info = decode_vmess(server)
         except InternalError as e:
             print(e.message, file=sys.stderr)
+    elif protocol == "vless":
+        try:
+            info = decode_vless(server)
+        except InternalError as e:
+            print(e.message, file=sys.stderr)
+
     return info
 
 
-def server_conf_2_dict(server_conf):
+def server_conf_2_dict(server_conf: ServerInfo) -> dict[str, str | int | bool | dict]:
     clash_proxy = {
         "name": server_conf.tag,
-        "type": "vmess" if server_conf.protocol == VMESS else "ss",
+        "type": "ss" if server_conf.protocol == SS else server_conf.protocol,
         "server": server_conf.host,
         "port": server_conf.port,
-        "cipher": server_conf.algorithm,
-        "uuid" if server_conf.protocol == VMESS else "password": server_conf.key,
+        "password" if server_conf.protocol == SS else "uuid": server_conf.key,
     }
-
-    if server_conf.protocol == VMESS:
+    if server_conf.protocol == SS:
+        clash_proxy["cipher"] = server_conf.algorithm
+    elif server_conf.protocol == VMESS:
+        clash_proxy["cipher"] = server_conf.algorithm
         clash_proxy["alterId"] = server_conf.alter_id
         clash_proxy["network"] = server_conf.net
         clash_proxy["tls"] = server_conf.tls == "tls"
@@ -218,5 +255,14 @@ def server_conf_2_dict(server_conf):
             clash_proxy["grpc-opts"] = {}
             if server_conf.path:
                 clash_proxy["grpc-opts"]["grpc-service-name"] = server_conf.path
+    elif server_conf.protocol == VLESS:
+        clash_proxy["flow"] = server_conf.flow
+        clash_proxy["network"] = server_conf.net or "tcp"
+        clash_proxy["tls"] = server_conf.tls == "tls"
+        if server_conf.tls == "tls":
+            clash_proxy["skip-cert-verify"] = True
+            clash_proxy["servername"] = server_conf.sni or "example.com"
+        if server_conf.client_fingerprint:
+            clash_proxy["client-fingerprint"] = server_conf.client_fingerprint
 
     return clash_proxy

@@ -144,7 +144,7 @@ def generate_clash_config(
 
 
 def main():
-    path = None
+    path = ''
     listen = 1082
     allow_lan = False
     service = ""
