@@ -159,7 +159,7 @@ def subscription_to_servers(url: str, cache_file: str | None) -> list[ServerInfo
         server_confs_str = server_confs_bs.decode("utf-8", "strict")
     except UnicodeDecodeError as e:
         raise InternalError(
-            f"subscription b64 decoded result can not decode to string by utf-8 \n {e.reason}"
+            f"subscription b64 decoded result can not decode to string by utf-8 \n {e.reason} \n dump: \n {server_confs_bs.hex()}"
         )
 
     server_confs = server_confs_str.split("\n")
