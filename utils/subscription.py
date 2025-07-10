@@ -148,7 +148,7 @@ def decode_vless(server_str: str) -> ServerInfo | None:
 def subscription_to_servers(url: str, cache_file: str | None) -> list[ServerInfo]:
     result: list[ServerInfo] = list()
     try:
-        resp = requests.get(url, headers= {"User-Agent": "Mozilla/5.0 (Python; requests;) JMSToClash/20250710"} , proxies={"http": "", "https": ""}, timeout=10)
+        resp = requests.get(url, headers= {"User-Agent": "Mozilla/5.0 (Python; requests;) jms-to-c/20250710"} , proxies={"http": "", "https": ""}, timeout=10)
     except Exception as e:
         raise InternalError("requests.get raises exceptions. " + str(e))
     if not resp.ok:
@@ -159,7 +159,7 @@ def subscription_to_servers(url: str, cache_file: str | None) -> list[ServerInfo
         server_confs_str = server_confs_bs.decode("utf-8", "strict")
     except UnicodeDecodeError as e:
         raise InternalError(
-            f"subscription b64 decoded result can not decode to string by utf-8 \n {e.reason} \n dump: \n {server_confs_bs.hex()}"
+            f"subscription b64 decoded result can not decode to string by utf-8 \n {e.reason}"
         )
 
     server_confs = server_confs_str.split("\n")
