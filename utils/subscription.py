@@ -8,6 +8,7 @@ from urllib.parse import unquote
 SS = "shadowsocks"
 VMESS = "vmess"
 VLESS = "vless"
+TROJAN= "trojan"
 
 
 class InternalError(Exception):
@@ -144,6 +145,26 @@ def decode_vless(server_str: str) -> ServerInfo | None:
         return None
     return info
 
+def decode_trojan(server_str: str) -> ServerInfo | None:
+    info = ServerInfo(TROJAN)
+    try:
+        [server_info, info.tag] = server_str.split("#", maxsplit=1)
+        info.tag = urldecode_or_original(info.tag.strip())
+        [base, extra] = server_info.split("?", maxsplit=1)
+        [info.key, endpoint] = base.split("@", maxsplit=1)
+        [info.host, port] = endpoint.split(":", maxsplit=1)
+        info.port = int(port)
+        params = extra.split("&")
+        for param in params:
+            if param.startswith("type="):
+                info.net = param.split("=", maxsplit=1)[1]
+            elif param.startswith("sni="):
+                info.sni = param.split("=", maxsplit=1)[1]
+    except InternalError as e:
+        print(e, file=sys.stderr)
+        return None
+    return info
+
 
 def subscription_to_servers(url: str, cache_file: str | None) -> list[ServerInfo]:
     result: list[ServerInfo] = list()
@@ -229,6 +250,11 @@ def uri_to_server(uri: str) -> ServerInfo | None:
             info = decode_vless(server)
         except InternalError as e:
             print(e.message, file=sys.stderr)
+    elif protocol == TROJAN:
+        try:
+            info = decode_trojan(server)
+        except InternalError as e:
+            print(e.message, file=sys.stderr)
 
     return info
 
@@ -239,7 +265,7 @@ def server_conf_2_dict(server_conf: ServerInfo) -> dict[str, str | int | bool | 
         "type": "ss" if server_conf.protocol == SS else server_conf.protocol,
         "server": server_conf.host,
         "port": server_conf.port,
-        "password" if server_conf.protocol == SS else "uuid": server_conf.key,
+        "password" if (server_conf.protocol == SS or server_conf.protocol == TROJAN) else "uuid": server_conf.key,
     }
     if server_conf.protocol == SS:
         clash_proxy["cipher"] = server_conf.algorithm
@@ -250,7 +276,7 @@ def server_conf_2_dict(server_conf: ServerInfo) -> dict[str, str | int | bool | 
         clash_proxy["tls"] = server_conf.tls == "tls"
         if server_conf.tls == "tls":
             clash_proxy["skip-cert-verify"] = True
-            clash_proxy["servername"] = server_conf.sni or "example.com"
+            clash_proxy["sni"] = server_conf.sni or "example.com"
         if server_conf.net == "grpc":
             clash_proxy["grpc-opts"] = {}
             if server_conf.path:
@@ -261,8 +287,13 @@ def server_conf_2_dict(server_conf: ServerInfo) -> dict[str, str | int | bool | 
         clash_proxy["tls"] = server_conf.tls == "tls"
         if server_conf.tls == "tls":
             clash_proxy["skip-cert-verify"] = True
-            clash_proxy["servername"] = server_conf.sni or "example.com"
+            clash_proxy["sni"] = server_conf.sni or "example.com"
         if server_conf.client_fingerprint:
             clash_proxy["client-fingerprint"] = server_conf.client_fingerprint
-
+    elif server_conf.protocol == TROJAN:
+        clash_proxy["skip-cert-verify"] = True
+        if server_conf.sni is not None:
+            clash_proxy["sni"] = server_conf.sni
+        if server_conf.net is not None:
+            clash_proxy["network"] = server_conf.net
     return clash_proxy
