@@ -34,6 +34,8 @@ class ServerInfo:
         self.path = None
         self.flow: str | None = None
         self.client_fingerprint: str | None = None
+        self.up: str | None = None
+        self.down: str | None = None
 
 
 def base64decode(encoded: str) -> bytes:
@@ -168,6 +170,8 @@ def decode_trojan(server_str: str) -> ServerInfo | None:
 
 def decode_hysteria2(server_str: str) -> ServerInfo | None:
     info = ServerInfo(HY2)
+    info.down = "200"
+    info.up = "30"
     try:
         [server_info, info.tag] = server_str.split("#", maxsplit=1)
         info.tag = urldecode_or_original(info.tag.strip())
@@ -326,4 +330,8 @@ def server_conf_2_dict(server_conf: ServerInfo) -> dict[str, str | int | bool | 
         clash_proxy["skip-cert-verify"] = True
         if server_conf.sni is not None:
             clash_proxy["sni"] = server_conf.sni
+        if server_conf.down is not None:
+            clash_proxy["down"] = server_conf.down
+        if server_conf.up is not None:
+            clash_proxy["up"] = server_conf.up
     return clash_proxy
