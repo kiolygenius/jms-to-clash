@@ -194,7 +194,7 @@ def decode_hysteria2(server_str: str) -> ServerInfo | None:
 def subscription_to_servers(url: str, cache_file: str | None) -> list[ServerInfo]:
     result: list[ServerInfo] = list()
     try:
-        resp = requests.get(url, headers= {"User-Agent": "Mozilla/5.0 (Python; requests;) jms-to-c/20251115"} , proxies={"http": "", "https": ""}, timeout=10, allow_redirects = True)
+        resp = requests.get(url, headers= {"User-Agent": "curl/8.17.0"} , proxies={"http": "", "https": ""}, timeout=10, allow_redirects = True)
     except Exception as e:
         raise InternalError("requests.get raises exceptions. " + str(e))
     if not resp.ok:
