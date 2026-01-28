@@ -2,6 +2,7 @@
 import sys
 import json
 import base64
+import time
 import requests
 from urllib.parse import unquote
 
@@ -193,10 +194,26 @@ def decode_hysteria2(server_str: str) -> ServerInfo | None:
 
 def subscription_to_servers(url: str, cache_file: str | None) -> list[ServerInfo]:
     result: list[ServerInfo] = list()
-    try:
-        resp = requests.get(url, headers= {"User-Agent": "curl/8.17.0"} , proxies={"http": "", "https": ""}, timeout=10, allow_redirects = True)
-    except Exception as e:
-        raise InternalError("requests.get raises exceptions. " + str(e))
+    
+    max_retries = 10
+    retry_count = 0
+    last_exception = None
+    resp = None
+    
+    while retry_count <= max_retries:
+        try:
+            resp = requests.get(url, headers= {"User-Agent": "curl/8.17.0"} , proxies={"http": "", "https": ""}, timeout=10, allow_redirects = True)
+            break
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.SSLError) as e:
+            last_exception = e
+            retry_count += 1
+            continue
+        except Exception as e:
+            raise InternalError("requests.get raises exceptions. " + str(e))
+    
+    if resp is None:
+        raise InternalError(f"requests.get failed after {max_retries} retries. Last error: {str(last_exception)}")
+    
     if not resp.ok:
         raise InternalError("requests.get's response not ok.")
 
