@@ -68,7 +68,40 @@ def generate_clash_config(
     }
 
     if support_meta:
-        clash_config["tun"] = {"enable": False}
+        clash_config["dns"] = {
+            "enable": True,
+            "listen": "127.0.0.153:53",
+            "ipv6": False,
+            "default-nameserver": ["223.5.5.5", "119.29.29.29", "114.114.114.114"],
+            "enhanced-mode": "fake-ip",
+            "fake-ip-range": "198.18.0.1/16",
+            "fake-ip-filter": ["*.lan", "localhost", "localhost.*"],
+            "use-hosts": True,
+            "respect-rules": True,
+            "proxy-server-nameserver": ["223.5.5.5", "119.29.29.29", "114.114.114.114"],
+            "nameserver": ["223.5.5.5", "119.29.29.29", "114.114.114.114"],
+            "fallback": ["https://v.recipes/dns-cn", "8.8.8.8"],
+            "fallback-filter": {
+                "geoip": True,
+                "geoip-code": "CN",
+                "ipcidr": ["240.0.0.0/4"],
+                "domain": ["+.edg3.org", "+.google.com", "+.facebook.com", "+.youtube.com"]
+            },
+            "nameserver-policy": {
+                "geosite:cn": ["https://doh.pub/dns-query", "https://dns.alidns.com/dns-query"],
+                "geosite:private": ["https://doh.pub/dns-query", "https://dns.alidns.com/dns-query"],
+                "+.edg3.org": ["https://v.recipes/dns-cn"]
+            }
+        }
+        clash_config["tun"] = {
+            "enable": True,
+            "stack": "mixed",
+            "auto-route": True,
+            "auto-redirect": True,
+            "strict-route": True,
+            "device": "tun-mihomo",
+            "dns-hijack": ["any:53"]
+        }
         clash_config["rule-providers"] = {
             "custom-direct": {
                 "type": "file",
