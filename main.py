@@ -35,7 +35,7 @@ def grab_subscriptions(service_id: str, uuid: str, fallback: None | str, path: s
 
 
 def generate_clash_config(
-    proxies: list, path: str, listen: int, allow_len: bool, support_meta: bool
+    proxies: list, path: str, listen: int, allow_len: bool, support_meta: bool, tun: bool
 ):
     clash_config = {
         "allow-lan": allow_len,
@@ -68,40 +68,44 @@ def generate_clash_config(
     }
 
     if support_meta:
-        clash_config["dns"] = {
-            "enable": True,
-            "listen": "127.0.0.153:53",
-            "ipv6": False,
-            "default-nameserver": ["223.5.5.5", "119.29.29.29", "114.114.114.114"],
-            "enhanced-mode": "fake-ip",
-            "fake-ip-range": "198.18.0.1/16",
-            "fake-ip-filter": ["*.lan", "localhost", "localhost.*"],
-            "use-hosts": True,
-            "respect-rules": True,
-            "proxy-server-nameserver": ["223.5.5.5", "119.29.29.29", "114.114.114.114"],
-            "nameserver": ["223.5.5.5", "119.29.29.29", "114.114.114.114"],
-            "fallback": ["https://v.recipes/dns-cn", "8.8.8.8"],
-            "fallback-filter": {
-                "geoip": True,
-                "geoip-code": "CN",
-                "ipcidr": ["240.0.0.0/4"],
-                "domain": ["+.edg3.org", "+.google.com", "+.facebook.com", "+.youtube.com"]
-            },
-            "nameserver-policy": {
-                "geosite:cn": ["https://doh.pub/dns-query", "https://dns.alidns.com/dns-query"],
-                "geosite:private": ["https://doh.pub/dns-query", "https://dns.alidns.com/dns-query"],
-                "+.edg3.org": ["https://v.recipes/dns-cn"]
+        if tun:
+            clash_config["dns"] = {
+                "enable": True,
+                "listen": "127.0.0.153:53",
+                "ipv6": False,
+                "default-nameserver": ["223.5.5.5", "119.29.29.29", "114.114.114.114"],
+                "enhanced-mode": "fake-ip",
+                "fake-ip-range": "198.18.0.1/16",
+                "fake-ip-filter": ["*.lan", "localhost", "localhost.*"],
+                "use-hosts": True,
+                "respect-rules": True,
+                "proxy-server-nameserver": ["223.5.5.5", "119.29.29.29", "114.114.114.114"],
+                "nameserver": ["223.5.5.5", "119.29.29.29", "114.114.114.114"],
+                "fallback": ["https://v.recipes/dns-cn", "8.8.8.8"],
+                "fallback-filter": {
+                    "geoip": True,
+                    "geoip-code": "CN",
+                    "ipcidr": ["240.0.0.0/4"],
+                    "domain": ["+.edg3.org", "+.google.com", "+.facebook.com", "+.youtube.com"]
+                },
+                "nameserver-policy": {
+                    "geosite:cn": ["https://doh.pub/dns-query", "https://dns.alidns.com/dns-query"],
+                    "geosite:private": ["https://doh.pub/dns-query", "https://dns.alidns.com/dns-query"],
+                    "+.edg3.org": ["https://v.recipes/dns-cn"]
+                }
             }
-        }
-        clash_config["tun"] = {
-            "enable": True,
-            "stack": "mixed",
-            "auto-route": True,
-            "auto-redirect": True,
-            "strict-route": True,
-            "device": "tun-mihomo",
-            "dns-hijack": ["any:53"]
-        }
+            clash_config["tun"] = {
+                "enable": True,
+                "stack": "mixed",
+                "auto-route": True,
+                "auto-redirect": True,
+                "strict-route": True,
+                "device": "tun-mihomo",
+                "dns-hijack": ["any:53"]
+            }
+        else:
+            clash_config["tun"] = {"enable": False}
+        
         clash_config["rule-providers"] = {
             "custom-direct": {
                 "type": "file",
@@ -184,6 +188,7 @@ def main():
     uuid = ""
     fallback = None
     support_meta = False
+    tun = False
     try:
         opts, args = getopt.getopt(sys.argv[1:], "mnf:p:s:u:b:")
         for opt, arg in opts:
@@ -201,9 +206,11 @@ def main():
                 fallback = arg
             elif opt == "-m":
                 support_meta = True
+            elif opt == "-t":
+                tun = True
 
         server_confs = grab_subscriptions(service, uuid, fallback, path)
-        generate_clash_config(server_confs, path, listen, allow_lan, support_meta)
+        generate_clash_config(server_confs, path, listen, allow_lan, support_meta, tun)
     except getopt.GetoptError:
         print(
             "使用参数 -f /path/to/clash_config.yaml -p 1082 -s service_id -u uuid",
