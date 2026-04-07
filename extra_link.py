@@ -8,11 +8,11 @@ import yaml
 from utils.subscription import *
 
 
-def link_to_servers(link: str) -> list[ServerInfo] | None:
+def link_to_servers(link: str, ua: str | None = None) -> list[ServerInfo] | None:
     if not link:
         return None
 
-    return subscription_to_servers(link, None)
+    return subscription_to_servers(link, None, ua)
 
 
 def generate_proxy_providers(server_confs: list[ServerInfo], path: str):
@@ -90,8 +90,9 @@ def main():
     main_conf_path = None
     name = None
     server_confs = None
+    ua = None
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "l:f:m:n:")
+        opts, args = getopt.getopt(sys.argv[1:], "l:f:m:n:u:")
         for opt, arg in opts:
             if opt == "-f":
                 path = arg
@@ -101,8 +102,10 @@ def main():
                 main_conf_path = arg
             elif opt == "-n":
                 name = arg
+            elif opt == "-u":
+                ua = arg
         if link:
-            server_confs = link_to_servers(link)
+            server_confs = link_to_servers(link, ua)
         if server_confs is not None and path is not None:
             generate_proxy_providers(server_confs, path)
         

@@ -9,7 +9,7 @@ from urllib.parse import unquote
 SS = "shadowsocks"
 VMESS = "vmess"
 VLESS = "vless"
-TROJAN= "trojan"
+TROJAN = "trojan"
 HY2 = "hysteria2"
 
 
@@ -37,6 +37,9 @@ class ServerInfo:
         self.client_fingerprint: str | None = None
         self.up: str | None = None
         self.down: str | None = None
+        # Plugin fields for obfs-local
+        self.plugin: str | None = None
+        self.plugin_opts: dict | None = None
 
 
 def base64decode(encoded: str) -> bytes:
@@ -46,18 +49,18 @@ def base64decode(encoded: str) -> bytes:
     except Exception as e:
         print(e)
         return encoded.encode("utf-8")
-    
+
 
 def base64decode_or_original(s: str) -> str:
-    if s.find('@') != -1 and s.find(':') != -1:
+    if s.find("@") != -1 and s.find(":") != -1:
         return s
-    
+
     try:
         s = base64decode(s).decode("utf-8")
         return s
     except UnicodeDecodeError:
         return s
-    
+
 
 def urldecode_or_original(s: str) -> str:
     try:
@@ -77,6 +80,11 @@ def decode_shadowsocks(ss_server_str: str) -> ServerInfo | None:
             server = s_tag[0]
             server = base64decode_or_original(server)
 
+            # Check for query string (plugin parameters)
+            query_params = ""
+            if "?" in server:
+                server, query_params = server.split("?", maxsplit=1)
+
             auth_server = server.split("@")
             if len(auth_server) > 1:
                 host_port = auth_server[1]
@@ -84,16 +92,53 @@ def decode_shadowsocks(ss_server_str: str) -> ServerInfo | None:
             else:
                 return None
 
-            [info.algorithm, info.key] = base64decode_or_original(method_key).split(":", maxsplit=1)
-            [info.host, port] = host_port.split(":", maxsplit=1)
-            info.port = int(port)
+            [info.algorithm, info.key] = base64decode_or_original(method_key).split(
+                ":", maxsplit=1
+            )
+
+            # Parse host:port, handling possible query params attached to port
+            host_port_parts = host_port.split(":")
+            if len(host_port_parts) >= 2:
+                info.host = host_port_parts[0]
+                port_part = host_port_parts[1]
+                # Handle case where port might have query params appended
+                if "?" in port_part:
+                    port_part = port_part.split("?")[0]
+                info.port = int(port_part)
+            else:
+                return None
+
+            # Parse query parameters for plugin
+            if query_params:
+                params = query_params.split("&")
+                for param in params:
+                    if param.startswith("plugin="):
+                        plugin_value = urldecode_or_original(
+                            param[7:]
+                        )  # Remove "plugin="
+                        # Parse plugin options (semicolon-separated)
+                        plugin_parts = plugin_value.split(";")
+                        if len(plugin_parts) > 0:
+                            plugin_name = plugin_parts[0]
+                            if plugin_name == "obfs-local" or plugin_name == "obfs":
+                                info.plugin = "obfs"
+                                info.plugin_opts = {}
+                                for part in plugin_parts[1:]:
+                                    if "=" in part:
+                                        key, value = part.split("=", maxsplit=1)
+                                        if key == "obfs" and value:
+                                            info.plugin_opts["mode"] = value
+                                        elif key == "obfs-host" and value:
+                                            info.plugin_opts["host"] = value
+                                        elif key == "path" and value:
+                                            info.plugin_opts["path"] = value
+
             return info
         else:
             return None
     except Exception as e:
         print(e, file=sys.stderr)
         return None
-
 
 
 def decode_vmess(ss_server_str: str) -> ServerInfo | None:
@@ -149,6 +194,7 @@ def decode_vless(server_str: str) -> ServerInfo | None:
         return None
     return info
 
+
 def decode_trojan(server_str: str) -> ServerInfo | None:
     info = ServerInfo(TROJAN)
     try:
@@ -168,6 +214,7 @@ def decode_trojan(server_str: str) -> ServerInfo | None:
         print(e, file=sys.stderr)
         return None
     return info
+
 
 def decode_hysteria2(server_str: str) -> ServerInfo | None:
     info = ServerInfo(HY2)
@@ -192,30 +239,44 @@ def decode_hysteria2(server_str: str) -> ServerInfo | None:
     return info
 
 
-def subscription_to_servers(url: str, cache_file: str | None) -> list[ServerInfo]:
+def subscription_to_servers(
+    url: str, cache_file: str | None, ua: str | None = None
+) -> list[ServerInfo]:
     result: list[ServerInfo] = list()
-    
+
     max_retries = 10
     retry_count = 0
     last_exception = None
     resp = None
-    
+    ua = ua or "curl/8.17.0"
     while retry_count <= max_retries:
         try:
-            resp = requests.get(url, headers= {"User-Agent": "curl/8.17.0"} , proxies={"http": "", "https": ""}, timeout=10, allow_redirects = True)
+            resp = requests.get(
+                url,
+                headers={"User-Agent": ua},
+                proxies={"http": "", "https": ""},
+                timeout=10,
+                allow_redirects=True,
+            )
             break
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.SSLError) as e:
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.SSLError,
+        ) as e:
             last_exception = e
             retry_count += 1
             continue
         except Exception as e:
             raise InternalError("requests.get raises exceptions. " + str(e))
-    
+
     if resp is None:
-        raise InternalError(f"requests.get failed after {max_retries} retries. Last error: {str(last_exception)}")
-    
+        raise InternalError(
+            f"requests.get failed after {max_retries} retries. Last error: {str(last_exception)}"
+        )
+
     if not resp.ok:
-        raise InternalError("requests.get's response not ok.")
+        raise InternalError(f"requests.get's response not ok. \n {resp.status_code}")
 
     server_confs_bs = base64decode(resp.text)
     try:
@@ -312,10 +373,20 @@ def server_conf_2_dict(server_conf: ServerInfo) -> dict[str, str | int | bool | 
         "type": "ss" if server_conf.protocol == SS else server_conf.protocol,
         "server": server_conf.host,
         "port": server_conf.port,
-        "password" if (server_conf.protocol == SS or server_conf.protocol == TROJAN or server_conf.protocol == HY2) else "uuid": server_conf.key,
+        "password"
+        if (
+            server_conf.protocol == SS
+            or server_conf.protocol == TROJAN
+            or server_conf.protocol == HY2
+        )
+        else "uuid": server_conf.key,
     }
     if server_conf.protocol == SS:
         clash_proxy["cipher"] = server_conf.algorithm
+        if server_conf.plugin:
+            clash_proxy["plugin"] = server_conf.plugin
+        if server_conf.plugin_opts:
+            clash_proxy["plugin-opts"] = server_conf.plugin_opts
     elif server_conf.protocol == VMESS:
         clash_proxy["cipher"] = server_conf.algorithm
         clash_proxy["alterId"] = server_conf.alter_id
