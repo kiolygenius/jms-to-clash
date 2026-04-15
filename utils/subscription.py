@@ -11,7 +11,7 @@ VMESS = "vmess"
 VLESS = "vless"
 TROJAN = "trojan"
 HY2 = "hysteria2"
-
+ANYTLS = "anytls"
 
 class InternalError(Exception):
     def __init__(self, msg):
@@ -238,6 +238,28 @@ def decode_hysteria2(server_str: str) -> ServerInfo | None:
         return None
     return info
 
+def decode_anytls(server_str: str) -> ServerInfo | None:
+    info = ServerInfo(ANYTLS)
+    try:
+        [server_info, info.tag] = server_str.split("#", maxsplit=1)
+        info.tag = urldecode_or_original(info.tag.strip())
+        [base, extra] = server_info.split("?", maxsplit=1)
+        base = base.split("/", maxsplit=1)[0]
+        [info.key, endpoint] = base.split("@", maxsplit=1)
+        [info.host, port] = endpoint.split(":", maxsplit=1)
+        ports = port.split(",")
+        info.port = int(ports[0])
+        params = extra.split("&")
+        for param in params:
+            if param.startswith("sni="):
+                info.sni = param.split("=", maxsplit=1)[1]
+            elif param.startswith("fp="):
+                info.client_fingerprint = param.split("=", maxsplit=1)[1]
+    except InternalError as e:
+        print(e, file=sys.stderr)
+        return None
+    return info
+
 
 def subscription_to_servers(
     url: str, cache_file: str | None, ua: str | None = None
@@ -257,6 +279,7 @@ def subscription_to_servers(
                 proxies={"http": "", "https": ""},
                 timeout=10,
                 allow_redirects=True,
+                verify=False,
             )
             break
         except (
@@ -343,12 +366,12 @@ def uri_to_server(uri: str) -> ServerInfo | None:
             info = decode_shadowsocks(server)
         except InternalError as e:
             print(e.message, file=sys.stderr)
-    elif protocol == "vmess":
+    elif protocol == VMESS:
         try:
             info = decode_vmess(server)
         except InternalError as e:
             print(e.message, file=sys.stderr)
-    elif protocol == "vless":
+    elif protocol == VLESS:
         try:
             info = decode_vless(server)
         except InternalError as e:
@@ -361,6 +384,11 @@ def uri_to_server(uri: str) -> ServerInfo | None:
     elif protocol == HY2 or protocol == "hy2":
         try:
             info = decode_hysteria2(server)
+        except InternalError as e:
+            print(e.message, file=sys.stderr)
+    elif protocol == ANYTLS:
+        try:
+            info = decode_anytls(server)
         except InternalError as e:
             print(e.message, file=sys.stderr)
 
@@ -378,6 +406,7 @@ def server_conf_2_dict(server_conf: ServerInfo) -> dict[str, str | int | bool | 
             server_conf.protocol == SS
             or server_conf.protocol == TROJAN
             or server_conf.protocol == HY2
+            or server_conf.protocol == ANYTLS
         )
         else "uuid": server_conf.key,
     }
@@ -422,4 +451,10 @@ def server_conf_2_dict(server_conf: ServerInfo) -> dict[str, str | int | bool | 
             clash_proxy["down"] = server_conf.down
         if server_conf.up is not None:
             clash_proxy["up"] = server_conf.up
+    elif server_conf.protocol == ANYTLS:
+        clash_proxy["skip-cert-verify"] = True
+        if server_conf.sni is not None:
+            clash_proxy["sni"] = server_conf.sni
+        if server_conf.client_fingerprint is not None:
+            clash_proxy["client-fingerprint"] = server_conf.client_fingerprint
     return clash_proxy
