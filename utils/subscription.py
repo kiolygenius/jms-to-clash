@@ -412,6 +412,7 @@ def server_conf_2_dict(server_conf: ServerInfo) -> dict[str, str | int | bool | 
     }
     if server_conf.protocol == SS:
         clash_proxy["cipher"] = server_conf.algorithm
+        clash_proxy["udp"] = True
         if server_conf.plugin:
             clash_proxy["plugin"] = server_conf.plugin
         if server_conf.plugin_opts:
